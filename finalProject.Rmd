@@ -1,0 +1,117 @@
+---
+title: "Classification-based approach to lower Cahaba River"
+output: html_notebook
+---
+```{r}
+# setwd("/Users/kalliparauka/Desktop/WILD 7970/Project/code")
+```
+
+Load required packages.
+```{r}
+require(Voss)
+require(tidyverse)
+require(terra)
+require(sf)
+require(tidyterra)
+require(landscapemetrics)
+require(wesanderson)
+```
+
+Read in and format the substrate classification rasters created by PING-Mapper. 
+```{r}
+# Read the raster files in from GitHub
+Rec05 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00005_map_substrate_raster_mosaic_0.tif')
+Rec07 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00007_map_substrate_raster_mosaic_0.tif')
+Rec08 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00008_map_substrate_raster_mosaic_0.tif')
+Rec09 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00009_map_substrate_raster_mosaic_0.tif')
+Rec10 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00010_map_substrate_raster_mosaic_0.tif')
+Rec11 <- rast('https://github.com/kparauka/sonarCahaba/raw/main/cahaba00011_map_substrate_raster_mosaic_0.tif')
+
+# Redefine the values as characters (this would not work on the merged raster)
+values(Rec05) = as.character(values(Rec05))
+values(Rec07) = as.character(values(Rec07))
+values(Rec08) = as.character(values(Rec08))
+values(Rec09) = as.character(values(Rec09))
+values(Rec10) = as.character(values(Rec10))
+values(Rec11) = as.character(values(Rec11))
+
+# Merge them into one SpatRaster object
+lCahabaSubs <- raster::merge(Rec05, Rec07, Rec08, Rec09, Rec10, Rec11)
+
+# Test plot
+plot(lCahabaSubs)
+```
+
+Give the numbers category names and plot the new raster.
+```{r}
+# Give the numbers category names
+classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6, 7),
+                 'category' = c('finesRipple', 'finesFlat', 'cobbleBoulder', 'hardBottom', 'wood', 'other', 'shadow'))
+
+lCahabaSubs <- categories(lCahabaSubs, value = classCats)
+
+# Plot the new raster (this exhausted my vector memory)
+# ggplot(lCahabaSubs, aes(x=x, y=y, fill=category)) +
+  # geom_raster() +
+  # scale_fill_manual(values = wes_palette("Moonrise3", 7, type = "continuous")) 
+
+# Look at the characteristics of the raster
+res(lCahabaSubs)
+ext(lCahabaSubs)
+levels(lCahabaSubs)
+```
+*Chi-Squared test for comparing manual classifications to PING-Mapper classifications*
+```{r}
+# Randomly select five river miles for manual sonogram interpretation
+set.seed(74)
+sample(0:39, 4)
+
+# Chi-squared test
+```
+
+*Substrate composition*
+```{r}
+# How much of each substrate type is there?
+classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6, 7),
+                 'category' = c('finesRipple', 'finesFlat', 'cobbleBoulder', 'hardBottom', 'wood', 'other', 'shadow'))
+
+# Calculate the total area of each substrate class
+lsm_c_ca(lCahabaSubs, directions=8) %>%
+  left_join(classCats, by = 'ID')
+
+# proportions
+
+ # Shannon's diversity index
+lsm_l_shdi(lCahabaSubs)
+
+# Shannon's evenness index
+lsm_l_shei(lCahabaSubs) 
+```
+
+*Substrate configuration*
+```{r}
+# Contrast metrics
+
+# Aggregation metrics
+# Contagion (aggregation metric)
+lsm_l_contag(lCahabaSubs) 
+
+# probability of two random cells belonging to the same class; based on cell adjacencies; approaches CONTAG = 0 if all cells are unevenly distributed and 100 indicates that all cells are equally adjacent to all other classes.
+
+# Interspersion and juxtaposition (may be redundant)
+lsm_l_iji(lCahabaSubs) 
+# IJI is an ’Aggregation metric’; it is a so called "salt and pepper" metric and describes the intermixing of classes (i.e. without considering like adjacencies - the diagonal of the adjacency table); approaches 0 if a class is only adjacent to a single other class and equals 100 when a class is equally adjacent to all other classes
+
+# Patch metrics
+lsm_c_area_mn(lCahabaSubs, directions = 8) # Average area of each patch
+
+lsm_c_area_sd(lCahabaSubs, directions = 8) # Patch SD
+
+# Basically, you want to know how big the patches are and how thoroughly mixed they are throughout the landscape
+
+
+
+```
+
+
+
